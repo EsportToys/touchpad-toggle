@@ -1,51 +1,43 @@
-const WINAPI = @import("std").os.windows.WINAPI;
-const INPUT = extern struct {
-    type: u32,
-    input: extern union {
-        mi: extern struct {
-            dx: i32 = 0,
-            dy: i32 = 0,
-            mouseData: i32 = 0,
-            dwFlags: u32 = 0,
-            time: u32 = 0,
-            dwExtraInfo: usize = 0,
-        },
-        ki: extern struct {
-            wVK: u16 = 0,
-            wScan: u16 = 0,
-            dwFlags: u32 = 0,
-            time: u32 = 0,
-            dwExtraInfo: usize = 0,
-        },
-        hi: extern struct {
-            uMsg: u32 = 0,
-            wParamL: u16 = 0,
-            wParamH: u16 = 0,
-        }
-    },
-};
-
-extern "user32" fn SendInput(cInputs: u32, pInputs: [*]const INPUT, cbSize: i32) callconv(WINAPI) u32;
-
 pub fn main() void {
     _ = SendInput(6, &.{
-        kiVkey(0xa2,true),
-        kiVkey(0x5b,true),
-        kiVkey(0x87,true),
-        kiVkey(0x87,false),
-        kiVkey(0x5b,false),
-        kiVkey(0xa2,false),
+        .ki(.{ .wVk = 0xa2, .dwFlags = 0 }),
+        .ki(.{ .wVk = 0x5b, .dwFlags = 0 }),
+        .ki(.{ .wVk = 0x87, .dwFlags = 0 }),
+        .ki(.{ .wVk = 0x87, .dwFlags = 2 }),
+        .ki(.{ .wVk = 0x5b, .dwFlags = 2 }),
+        .ki(.{ .wVk = 0xa2, .dwFlags = 2 }),
     }, @sizeOf(INPUT));
 }
 
-fn kiVkey(vkey: u16, state: bool) INPUT {
-    return .{
-        .type = 1,
-        .input = .{
-            .ki = .{
-                .wVK = vkey,
-                .dwFlags = if(state) 0 else 2,
-            },
-        },
+extern "user32" fn SendInput(cInputs: u32, pInputs: [*]const INPUT, cbSize: i32) callconv(.winapi) u32;
+const INPUT = extern struct {
+    type: u32,
+    input: extern union {
+        mi: MOUSEINPUT,
+        ki: KEYBDINPUT,
+        hi: HARDWAREINPUT,
+    },
+    const MOUSEINPUT = extern struct {
+        dx: i32 = 0,
+        dy: i32 = 0,
+        mouseData: i32 = 0,
+        dwFlags: u32 = 0,
+        time: u32 = 0,
+        dwExtraInfo: usize = 0,
     };
-}
+    const KEYBDINPUT = extern struct {
+        wVk: u16 = 0,
+        wScan: u16 = 0,
+        dwFlags: u32 = 0,
+        time: u32 = 0,
+        dwExtraInfo: usize = 0,
+    };
+    const HARDWAREINPUT = extern struct {
+        uMsg: u32 = 0,
+        wParamL: u16 = 0,
+        wParamH: u16 = 0,
+    };
+    fn mi(m: MOUSEINPUT)    INPUT { return .{ .type = 0, .input = .{ .mi = m } }; }
+    fn ki(k: KEYBDINPUT)    INPUT { return .{ .type = 1, .input = .{ .ki = k } }; }
+    fn hi(h: HARDWAREINPUT) INPUT { return .{ .type = 2, .input = .{ .hi = h } }; }
+};
